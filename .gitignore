@@ -46,3 +46,8 @@ data/vectors.json.tmp
 # temporary files
 tmp/
 /tmp/
+
+# large media (avoid exceeding GitHub size limits; adjust if needed)
+public/**/*.mp4
+public/**/*.mov
+public/**/*.webm
