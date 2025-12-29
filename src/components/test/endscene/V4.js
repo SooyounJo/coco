@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { SplitWords } from '@/components/ui/SplitText';
 import { CanvasBackground } from '@/components/ui/BlobBackgroundV2Canvas';
 
-export default function EndSceneV3() {
+export default function EndSceneV4() {
   const [isPopping, setIsPopping] = useState(false);
   const triggerPop = useCallback((e) => {
     e?.preventDefault?.();
@@ -21,6 +21,22 @@ export default function EndSceneV3() {
         }}
       />
       <CanvasBackground boosted={false} phase="completed" popActive={true} />
+
+      {/* Dot placed just above the bottom CTA text */}
+      <div className="cta-dot-layer" aria-hidden>
+        <div className={`cta-dot-wrapper ${isPopping ? 'is-popping' : ''}`}>
+          <div className="ripple-core" />
+          <div className="ripple-blur-dot" />
+          <div className="ripple-wave" />
+          <div className="ripple-wave ripple-wave--d1" />
+          <div className="ripple-wave ripple-wave--d2" />
+          <div className="ripple-wave ripple-wave--d3" />
+          <div className="ripple-wave ripple-wave--d4" />
+        </div>
+      </div>
+      <div className="bottom-touch-area" onClick={triggerPop} onTouchStart={triggerPop} />
+
+      {/* Text block (stays around center) */}
       <div
         style={{
           fontFamily: 'Pretendard Variable',
@@ -35,6 +51,7 @@ export default function EndSceneV3() {
           whiteSpace: 'pre-line',
           position: 'relative',
           zIndex: 20,
+          marginTop: '0'
         }}
       >
         <div>
@@ -57,20 +74,7 @@ export default function EndSceneV3() {
         </div>
       </div>
 
-      {/* Half-cut giant dot at bottom (v1-style, enlarged) */}
-      <div className="half-dot-layer" aria-hidden>
-        <div className={`half-dot-wrapper ${isPopping ? 'is-popping' : ''}`}>
-          <div className="bg-blur-dot" />
-          <div className="ripple-core" />
-          <div className="ripple-wave" />
-          <div className="ripple-wave ripple-wave--d1" />
-          <div className="ripple-wave ripple-wave--d2" />
-          <div className="ripple-wave ripple-wave--d3" />
-          <div className="ripple-wave ripple-wave--d4" />
-        </div>
-      </div>
-      <div className="bottom-touch-area" onClick={triggerPop} onTouchStart={triggerPop} />
-      {/* Bottom CTA text */}
+      {/* Bottom CTA text (plain text, not a button) */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-gradient-to-t from-white/90 to-transparent backdrop-blur-sm safe-bottom">
         <div className="px-6 pb-8 pt-4 text-center">
           <span
@@ -94,6 +98,7 @@ export default function EndSceneV3() {
           </span>
         </div>
       </div>
+
       <style jsx>{`
         .bottom-touch-area {
           position: fixed;
@@ -104,94 +109,93 @@ export default function EndSceneV3() {
           z-index: 40;
           background: transparent;
         }
-        .half-dot-layer {
+        .cta-dot-layer {
           position: fixed;
           inset: 0;
           pointer-events: none;
-          z-index: 25;
+          z-index: 15;
         }
-        .half-dot-wrapper {
+        .cta-dot-wrapper {
           position: absolute;
           left: 50%;
-          top: 96%;
-          transform: translate(-50%, -50%);
+          bottom: 120px; /* place dot just above CTA text area */
+          transform: translate(-50%, 50%);
         }
-        .is-popping .ripple-core {
-          animation: springPop 500ms cubic-bezier(0.2, 0.8, 0.2, 1.2);
-        }
-        /* Enlarge v1-style dot and place it half outside bottom */
         .ripple-core {
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 60px;
-          height: 60px;
+          width: 22px;
+          height: 22px;
           border-radius: 9999px;
           background: rgba(135, 254, 200, 1);
           transform: translate(-50%, -50%);
           z-index: 2;
-          box-shadow: 0 0 20px rgba(135, 254, 200, 0.9), 0 0 46px rgba(135, 254, 200, 0.5);
+          box-shadow: 0 0 14px rgba(135, 254, 200, 0.95), 0 0 36px rgba(135, 254, 200, 0.6);
         }
-        .bg-blur-dot {
+        .is-popping .ripple-core {
+          animation: springPop 500ms cubic-bezier(0.2, 0.8, 0.2, 1.2);
+        }
+        .ripple-blur-dot {
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 210px;
-          height: 210px; /* 원형으로 복귀 */
+          width: 120px;
+          height: 120px;
           border-radius: 9999px;
-          background: rgba(135, 254, 200, 0.75);
-          filter: blur(28px);
+          background: rgba(135, 254, 200, 0.18);
+          filter: blur(24px);
           transform: translate(-50%, -50%);
-          z-index: 1;
+          z-index: 0;
         }
         .ripple-wave {
           position: absolute;
           left: 50%;
           top: 50%;
-          width: 210px;
-          height: 210px; /* 원형으로 복귀 */
+          width: 40px;
+          height: 40px;
           border-radius: 9999px;
-          --bwEnd: 2px;
-          border: var(--bw, 12px) solid rgba(135, 254, 200, 0.28);
+          --bwEnd: 1.5px;
+          border: var(--bw, 6px) solid rgba(135, 254, 200, 0.42);
           transform: translate(-50%, -50%) scale(1.1);
-          animation: rippleExpandV3 10.5s ease-out infinite;
+          animation: rippleExpand 5.5s ease-out infinite;
           z-index: 3;
-          filter: blur(var(--blur, 3px)) drop-shadow(0 0 10px rgba(135, 254, 200, 0.45));
-          will-change: transform, filter, border-width, opacity;
+          filter: blur(var(--blur, 1.2px)) drop-shadow(0 0 10px rgba(135, 254, 200, 0.55));
         }
         .ripple-wave--d1 {
-          animation-delay: 2.0s;
-          --bw: 10px;
-          --blur: 3.0px;
+          animation-delay: 1.83s;
+          --bw: 5px;
+          --blur: 1px;
+          --bwEnd: 1.2px;
         }
         .ripple-wave--d2 {
-          animation-delay: 4.0s;
-          --bw: 12px;
-          --blur: 3.4px;
+          animation-delay: 3.66s;
+          --bw: 9px;   /* thicker variant */
+          --blur: 1.4px;
+          --bwEnd: 1.3px;
         }
         .ripple-wave--d3 {
-          animation-delay: 6.0s;
-          --bw: 11px;
-          --blur: 3.2px;
+          animation-delay: 0.91s;
+          --bw: 7px;
+          --blur: 1.2px;
+          --bwEnd: 1.2px;
         }
         .ripple-wave--d4 {
-          animation-delay: 8.0s;
-          --bw: 9px;
-          --blur: 2.8px;
+          animation-delay: 2.75s;
+          --bw: 11px;  /* thickest variant */
+          --blur: 1.5px;
+          --bwEnd: 1.4px;
         }
-        @keyframes rippleExpandV3 {
+        @keyframes rippleExpand {
           0% {
-            transform: translate(-50%, -50%) scale(1.1) scaleX(1) scaleY(1);
-            opacity: 0.65;
-            border-width: var(--bw, 12px);
-            filter: blur(var(--blur, 3px));
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 0.7;
+            border-width: var(--bw, 3px);
           }
           100% {
-            /* 화면 외곽으로 갈수록 퍼지며 약간 왜곡 */
-            transform: translate(-50%, -50%) scale(12) scaleX(1.12) scaleY(0.92) translateY(-3%);
+            transform: translate(-50%, -50%) scale(12);
             opacity: 0;
-            border-width: var(--bwEnd, 2px);
-            filter: blur(6px);
+            border-width: var(--bwEnd, 1px);
           }
         }
         @keyframes springPop {
