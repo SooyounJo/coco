@@ -63,6 +63,72 @@ export function TestBlobBackground({
   );
 }
 
+/**
+ * Mini WebGL blob for UI accents (e.g., mic button background).
+ * Uses the same shader as the main blob but renders a single sphere in a small canvas.
+ */
+export function MiniBlobBadge({
+  size = 40,
+  opacity = 0.9,
+  boost = 0.25,
+  paletteMix = 0.25,
+}) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '999px',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+      }}
+    >
+      <Canvas
+        dpr={[1, 2]}
+        camera={{ position: [0, 0, 6], fov: 50 }}
+        gl={{ antialias: true, alpha: true }}
+        style={{ width: '100%', height: '100%', display: 'block' }}
+      >
+        <ambientLight intensity={0.45} />
+        <directionalLight position={[4, 6, 8]} intensity={0.95} />
+        <MiniScene opacity={opacity} boost={boost} paletteMix={paletteMix} />
+      </Canvas>
+    </div>
+  );
+}
+
+function MiniScene({ opacity, boost, paletteMix }) {
+  const material = useMemo(() => createDefaultShaderMaterial(), []);
+  const meshRef = useRef(null);
+
+  useEffect(() => () => material.dispose(), [material]);
+
+  useFrame((state, delta) => {
+    material.uniforms.time.value += delta;
+    material.uniforms.globalAlpha.value = opacity;
+    material.uniforms.boost.value = boost;
+    material.uniforms.paletteMix.value = paletteMix;
+
+    if (meshRef.current) {
+      const t = state.clock.getElapsedTime();
+      // No "breathing" scale animation (requested). Keep only gentle rotation + shader motion.
+      meshRef.current.scale.setScalar(0.98);
+      meshRef.current.rotation.y = t * 0.2;
+      meshRef.current.rotation.x = Math.sin(t * 0.15) * 0.08;
+    }
+  });
+
+  return (
+    <group position={[0, 0.6, 1]}>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[1.7, 96, 96]} />
+        <primitive object={material} attach="material" />
+      </mesh>
+    </group>
+  );
+}
+
 function Scene({ boosted, phase, popActive, groupY }) {
   const { camera, viewport } = useThree();
   viewport.getCurrentViewport(camera, [0, 0, 0]);

@@ -1,16 +1,20 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import AnimatedLogo from '@/components/ui/AnimatedLogo';
 import { TestBlobBackground } from '@/components/test/TestBlobBackground';
 import AnimatedOutlineStroke from '@/components/ui/AnimatedOutlineStroke';
+import MicV1 from '@/components/test/textscene/mic/V1';
+import MicV2 from '@/components/test/textscene/mic/V2';
+import MicV3 from '@/components/test/textscene/mic/V3';
 
 export default function TextIndexMirror() {
+  const [micVariant, setMicVariant] = useState('v1');
   const message = useMemo(
     () => ({
       role: 'assistant',
-      content: `넓고 차분한 분위기의 ‘테라로사(TERAROSA)'를 추천합니다. 
+      content: `넓고 차분한 분위기의 ‘테라로사(TERAROSA)'를 추천합니다.
 
 커피가 맛있기로 유명하고, 비교적 조용한 분위기여서 노트북 작업하기 좋을거에요.`,
     }),
@@ -28,11 +32,54 @@ export default function TextIndexMirror() {
 
   const { headline, body } = useMemo(() => {
     const raw = (message?.content ?? '').trim();
+    const marker = '추천합니다.';
+    const idx = raw.indexOf(marker);
+    if (idx >= 0) {
+      const h = raw.slice(0, idx + marker.length).trim();
+      const b = raw.slice(idx + marker.length).trim().replace(/^\n+/, '');
+      return { headline: h, body: b };
+    }
     const parts = raw.split(/\n\s*\n/);
     const h = (parts[0] ?? '').trim();
     const b = parts.slice(1).join('\n\n').trim();
     return { headline: h, body: b };
   }, [message]);
+
+  // Dev-only: move the Next.js dev indicator ("N 1 Issue") up so it doesn't overlap the bottom input bar.
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
+    const moveNextIndicatorUp = () => {
+      try {
+        const els = Array.from(document.querySelectorAll('button, a, div, span'));
+        const target = els.find((el) => {
+          const txt = (el.textContent || '').trim();
+          if (!txt) return false;
+          if (!(txt.includes('Issue') && txt.includes('N'))) return false;
+          const cs = window.getComputedStyle(el);
+          if (cs.position !== 'fixed') return false;
+          const left = parseFloat(cs.left || '9999');
+          const bottom = parseFloat(cs.bottom || '9999');
+          return left <= 40 && bottom <= 40;
+        });
+        if (target) {
+          target.style.transform = 'translateY(-96px)';
+          target.style.zIndex = '9999';
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    const t1 = window.setTimeout(moveNextIndicatorUp, 50);
+    const t2 = window.setTimeout(moveNextIndicatorUp, 350);
+    const t3 = window.setTimeout(moveNextIndicatorUp, 1200);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.clearTimeout(t3);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col safe-area-inset overscroll-contain relative v10-main-page">
@@ -45,6 +92,42 @@ export default function TextIndexMirror() {
 
       {/* index top brand */}
       <AnimatedLogo />
+
+      {/* mic variant toggle (test only) */}
+      <div className="fixed z-40" style={{ top: 10, right: 10 }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            gap: 6,
+            padding: 6,
+            borderRadius: 999,
+            background: 'rgba(255,255,255,0.5)',
+            border: '1px solid rgba(255,255,255,0.6)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+          }}
+        >
+          {['v1', 'v2', 'v3'].map((v) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setMicVariant(v)}
+              className="touch-manipulation"
+              style={{
+                padding: '4px 8px',
+                borderRadius: 999,
+                fontFamily: 'Pretendard Variable',
+                fontSize: 11,
+                fontWeight: 700,
+                color: micVariant === v ? '#000' : '#6b7280',
+                background: micVariant === v ? 'rgba(255,255,255,0.85)' : 'transparent',
+              }}
+            >
+              {v.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* index main layout */}
       <main className="relative flex-1 flex flex-col min-h-0 pb-32 pt-20" style={{ background: 'transparent' }}>
@@ -153,13 +236,14 @@ export default function TextIndexMirror() {
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.78), 0 16px 34px rgba(60,34,88,0.16)',
               backdropFilter: 'blur(28px) saturate(1.6)',
               WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
+              overflow: 'hidden',
             }}
           >
             <input
               type="text"
               value=""
               onChange={() => {}}
-              placeholder="메시지 보내기..."
+              placeholder="Sori에게 말해주세요!"
               style={{
                 color: '#878181',
                 fontFamily: 'Pretendard Variable',
@@ -175,15 +259,7 @@ export default function TextIndexMirror() {
               spellCheck="false"
               readOnly
             />
-            <button type="button" className="px-4 py-3 touch-manipulation" title="음성 입력">
-              <svg className="w-5 h-5 text-[#878181]" fill="currentColor" viewBox="0 0 20 20">
-                <path
-                  fillRule="evenodd"
-                  d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
+            {micVariant === 'v1' ? <MicV1 /> : micVariant === 'v2' ? <MicV2 /> : <MicV3 />}
           </div>
         </div>
       </div>
@@ -191,6 +267,11 @@ export default function TextIndexMirror() {
       <style jsx>{`
         .v10-main-page {
           background: transparent;
+          font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI',
+            'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: geometricPrecision;
         }
         .v10-main-page::before {
           content: '';
@@ -224,7 +305,7 @@ export default function TextIndexMirror() {
             inset 0 -12px 36px rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(40px) saturate(0.9) brightness(1.04) contrast(0.96);
           -webkit-backdrop-filter: blur(40px) saturate(0.9) brightness(1.04) contrast(0.96);
-          filter: saturate(0.92);
+          /* Avoid applying filter on the container (can make text look jagged/blurry on some GPUs) */
           text-align: center;
           color: #1f2640;
           position: relative;
@@ -235,6 +316,10 @@ export default function TextIndexMirror() {
         .assistant-glass-body {
           position: relative;
           z-index: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 14px; /* ensures visible paragraph spacing between headline and body */
         }
 
         .assistant-headline {
@@ -267,6 +352,8 @@ export default function TextIndexMirror() {
         }
 
         /* background is handled by TestBlobBackground */
+
+        /* Mic variants are now separate components (V1~V3) */
       `}</style>
     </div>
   );
