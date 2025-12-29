@@ -153,6 +153,11 @@ export default function useCoexTTS() {
       sessionId?: string | null,
       rowIndex?: number | null
     ): Promise<PlaybackStarter | null> => {
+      // Test pages must not hit backend services (TTS/Rewrite). Keep UI only.
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/test/')) {
+        return null;
+      }
+
       const sourceText = prepareSnippetSource(text, useSnippet);
       if (!sourceText) {
         return null;
@@ -184,6 +189,10 @@ export default function useCoexTTS() {
           }
         };
       } catch (error) {
+        // Avoid noisy console errors when backend is unavailable (common in local/test setups).
+        if (error instanceof Error && error.message.startsWith('TTS API failed:')) {
+          return null;
+        }
         console.error('TTS preparation failed:', error);
         return null;
       }

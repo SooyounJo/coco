@@ -16,7 +16,8 @@ http://scripts.sil.org/OFL
 	font-weight: 45 920;
 	font-style: normal;
 	font-display: swap;
-	src: url('/fonts/woff2/PretendardVariable.woff2') format('woff2-variations');
+	/* Use broadly-supported format token so browsers don't skip the font and fall back */
+	src: url('/fonts/woff2/PretendardVariable.woff2') format('woff2');
 }
 
 :root {
