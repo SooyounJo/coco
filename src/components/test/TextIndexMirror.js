@@ -91,7 +91,9 @@ export default function TextIndexMirror() {
     };
   }, []);
 
-  const isMicSideVariant = useMemo(() => ['v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'].includes(micVariant), [micVariant]);
+  // V3~V8: right-side mic aligned to the 3rd suggestion chip's Y.
+  // V9: must live INSIDE the input container (user request).
+  const isMicSideVariant = useMemo(() => ['v3', 'v4', 'v5', 'v6', 'v7', 'v8'].includes(micVariant), [micVariant]);
 
   const renderMicForVariant = useCallback(() => {
     switch (micVariant) {

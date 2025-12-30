@@ -9,7 +9,7 @@ export default function MicV7() {
     <button type="button" className="touch-manipulation mic-btn mic-btn--v7" title="음성 입력">
       <span className="mic-white-glass" aria-hidden />
 
-      <svg className="mic-svg" width="24" height="34" viewBox="0 0 20 28" fill="none" aria-hidden>
+      <svg className="mic-svg" width="20" height="28" viewBox="0 0 20 28" fill="none" aria-hidden>
         <defs>
           {/* top = green, bottom = blue */}
           <linearGradient id="micGradV7" x1="10" y1="0" x2="10" y2="28" gradientUnits="userSpaceOnUse">
@@ -67,6 +67,8 @@ export default function MicV7() {
           z-index: 1;
           display: block;
           filter: drop-shadow(0 10px 18px rgba(31, 123, 255, 0.10));
+          width: 20px;
+          height: 28px;
         }
       `}</style>
     </button>

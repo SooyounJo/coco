@@ -9,7 +9,7 @@ export default function MicV8() {
     <button type="button" className="touch-manipulation mic-btn mic-btn--v8" title="음성 입력">
       <span className="mic-bluegreen-glass" aria-hidden />
 
-      <svg className="mic-svg" width="24" height="34" viewBox="0 0 20 28" fill="none" aria-hidden>
+      <svg className="mic-svg" width="20" height="28" viewBox="0 0 20 28" fill="none" aria-hidden>
         <path d="M14 5C14 2.79086 12.2091 1 10 1C7.79086 1 6 2.79086 6 5" stroke="#FFFFFF" strokeWidth="2" />
         <path d="M6 12C6 14.2091 7.79086 16 10 16C12.2091 16 14 14.2091 14 12" stroke="#FFFFFF" strokeWidth="2" />
         <path
@@ -63,6 +63,8 @@ export default function MicV8() {
           z-index: 1;
           display: block;
           filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.10));
+          width: 20px;
+          height: 28px;
         }
       `}</style>
     </button>
