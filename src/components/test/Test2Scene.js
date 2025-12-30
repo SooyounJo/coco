@@ -14,8 +14,16 @@ import MicV2 from '@/components/test/textscene/mic/V2';
 export default function Test2Scene() {
   const modalRef = useRef(null);
   const chipsWrapRef = useRef(null);
+  const inputBarRef = useRef(null);
   const [visibleChipCount, setVisibleChipCount] = useState(3);
-  const [chipsNeedGlow, setChipsNeedGlow] = useState(false);
+  const [chipsBehind, setChipsBehind] = useState(false);
+  const [chipsBottomPx, setChipsBottomPx] = useState(0);
+  const [chipAIdx, setChipAIdx] = useState(0);
+  const [chipBIdx, setChipBIdx] = useState(1);
+  const chipAIdxRef = useRef(0);
+  const chipBIdxRef = useRef(1);
+  const nextChipIdxRef = useRef(2);
+  const [swapNonce, setSwapNonce] = useState(0);
 
   const message = useMemo(
     () => ({
@@ -36,6 +44,43 @@ export default function Test2Scene() {
     []
   );
 
+  useEffect(() => {
+    chipAIdxRef.current = chipAIdx;
+  }, [chipAIdx]);
+  useEffect(() => {
+    chipBIdxRef.current = chipBIdx;
+  }, [chipBIdx]);
+
+  // When we are in the "2 chips" state, rotate the texts every 2s and move the blur slot down.
+  useEffect(() => {
+    if (!(visibleChipCount === 2)) return;
+
+    // Initialize from current indices (safe for hot reload).
+    if (nextChipIdxRef.current == null) nextChipIdxRef.current = 2;
+
+    const t = window.setInterval(() => {
+      // Slot rotation only: content shifts down (top -> bottom), new item enters bottom.
+      const newTop = chipBIdxRef.current;
+      const next = nextChipIdxRef.current % chips.length;
+      nextChipIdxRef.current = (nextChipIdxRef.current + 1) % chips.length;
+
+      setChipAIdx(newTop);
+      setChipBIdx(next);
+      setSwapNonce((n) => n + 1);
+    }, 3000);
+
+    return () => window.clearInterval(t);
+  }, [visibleChipCount, chips.length]);
+
+  // Reset to default ordering when we go back to 3 chips.
+  useEffect(() => {
+    if (visibleChipCount !== 3) return;
+    setChipAIdx(0);
+    setChipBIdx(1);
+    nextChipIdxRef.current = 2;
+    setSwapNonce(0);
+  }, [visibleChipCount]);
+
   const recomputeOverlap = useCallback(() => {
     const modalEl = modalRef.current;
     const chipsEl = chipsWrapRef.current;
@@ -49,15 +94,25 @@ export default function Test2Scene() {
     const buffer = 12;
     const isOverlapping = modalRect.bottom > chipsRect.top - buffer;
 
+    // Two-step behavior (as requested):
+    // 1) if overlapping with 3 chips -> reduce to 2 (no blur/behind yet)
+    // 2) if still overlapping with 2 chips -> chips go BEHIND modal + blur/dim
+    if (visibleChipCount === 3) {
+      if (isOverlapping) {
+        setVisibleChipCount(2);
+        setChipsBehind(false);
+        return;
+      }
+      setChipsBehind(false);
+      return;
+    }
+
+    // visibleChipCount === 2
     if (isOverlapping) {
-      // First response: reduce chips to 2.
-      if (visibleChipCount !== 2) setVisibleChipCount(2);
-      // Second response: if still overlapping even after reduction, add glow.
-      setChipsNeedGlow(true);
+      setChipsBehind(true);
     } else {
-      // If there's plenty of space again, restore and remove glow.
-      if (visibleChipCount !== 3) setVisibleChipCount(3);
-      setChipsNeedGlow(false);
+      setChipsBehind(false);
+      setVisibleChipCount(3);
     }
   }, [visibleChipCount]);
 
@@ -119,6 +174,18 @@ export default function Test2Scene() {
     const tick = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
+        // Keep chips positioned above the input bar with the same gap as the original layout.
+        try {
+          const inputRect = inputBarRef.current?.getBoundingClientRect();
+          if (inputRect) {
+            // Place the chips layer so its BOTTOM sits just above the input bar (gap ~= 16px).
+            // bottom = viewportHeight - (inputTop - gap)
+            const gap = 16;
+            setChipsBottomPx(Math.round(window.innerHeight - inputRect.top + gap));
+          }
+        } catch {
+          // ignore
+        }
         recomputeOverlap();
       });
     };
@@ -129,6 +196,7 @@ export default function Test2Scene() {
     if (ro) {
       if (modalRef.current) ro.observe(modalRef.current);
       if (chipsWrapRef.current) ro.observe(chipsWrapRef.current);
+      if (inputBarRef.current) ro.observe(inputBarRef.current);
       ro.observe(document.documentElement);
     }
 
@@ -208,51 +276,64 @@ export default function Test2Scene() {
         </div>
       </main>
 
+      {/* chips layer: can go behind modal when still overlapping after reducing to 2 */}
+      <div
+        className="fixed left-0 right-0 px-4"
+        style={{
+          bottom: `${chipsBottomPx}px`,
+          zIndex: chipsBehind ? 8 : 32,
+          pointerEvents: chipsBehind ? 'none' : 'auto',
+        }}
+      >
+        <div
+          ref={chipsWrapRef}
+          className={chipsBehind ? 'chips-wrap chips-wrap--behind' : 'chips-wrap'}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}
+        >
+          {(visibleChipCount === 2 ? [chips[chipAIdx], chips[chipBIdx]] : chips.slice(0, 3)).map((text, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`touch-manipulation active:scale-95 rounded-3xl outline outline-1 outline-offset-[-1px] outline-white chip-btn ${
+                chipsBehind && idx === 0 ? 'chip-btn--fade' : ''
+              }`}
+              style={{
+                display: 'inline-flex',
+                padding: '8px 16px',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flex: '0 0 auto',
+                cursor: 'default',
+                background: 'linear-gradient(180deg,rgb(251, 255, 254) 0%, #F4E9F0 63.94%, #FFF 100%)',
+              }}
+            >
+              <span
+                key={`${idx}-${text}-${swapNonce}`}
+                className="chip-label"
+                style={{
+                  '--dy': idx === 0 ? '-6px' : '-10px',
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '14px',
+                  fontStyle: 'normal',
+                  fontWeight: 600,
+                  lineHeight: '190%',
+                  letterSpacing: '-0.48px',
+                  color: '#757575',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {text}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* input layer: always on top */}
       <div className="fixed bottom-0 left-0 right-0 z-30 p-4 safe-bottom">
         <div className="w-full">
-          <div style={{ marginBottom: '16px' }}>
-            <div
-              ref={chipsWrapRef}
-              className={chipsNeedGlow ? 'chips-wrap chips-wrap--glow' : 'chips-wrap'}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}
-            >
-              {chips.slice(0, visibleChipCount).map((text, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`touch-manipulation active:scale-95 rounded-3xl outline outline-1 outline-offset-[-1px] outline-white ${
-                    chipsNeedGlow ? 'chip-btn chip-btn--glow' : 'chip-btn'
-                  }`}
-                  style={{
-                    display: 'inline-flex',
-                    padding: '8px 16px',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    flex: '0 0 auto',
-                    cursor: 'default',
-                    background: 'linear-gradient(180deg,rgb(251, 255, 254) 0%, #F4E9F0 63.94%, #FFF 100%)',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: 'Pretendard Variable',
-                      fontSize: '14px',
-                      fontStyle: 'normal',
-                      fontWeight: 600,
-                      lineHeight: '190%',
-                      letterSpacing: '-0.48px',
-                      color: '#757575',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {text}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
           <div
+            ref={inputBarRef}
             className="flex items-center"
             style={{
               borderRadius: '22px',
@@ -375,14 +456,32 @@ export default function Test2Scene() {
           overflow-wrap: break-word;
         }
 
-        .chips-wrap--glow {
-          /* keep above the modal edges visually if they still overlap */
-          position: relative;
-          z-index: 40;
+        .chips-wrap--behind {
+          /* Chips are behind the modal (z-index handles it). Keep them readable; only the TOP chip fades. */
         }
-        .chip-btn--glow {
-          /* soft white halo so chips feel separated from the modal when space is tight */
-          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.85), 0 10px 26px rgba(255, 255, 255, 0.55);
+        .chip-label {
+          display: inline-block;
+          will-change: transform, opacity;
+          animation: chipSwapIn 520ms cubic-bezier(0.16, 1.0, 0.3, 1) both;
+        }
+        @keyframes chipSwapIn {
+          0% {
+            transform: translateY(var(--dy, -8px)) scale(0.985);
+            opacity: 0.0;
+          }
+          60% {
+            transform: translateY(1px) scale(1.035);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(0px) scale(1);
+            opacity: 1;
+          }
+        }
+        .chip-btn--fade {
+          /* Only the top chip softens: lighter opacity + a touch of blur (no darkening) */
+          opacity: 0.48;
+          filter: blur(0.5px);
         }
       `}</style>
     </div>
