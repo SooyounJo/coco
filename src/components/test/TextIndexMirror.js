@@ -1,16 +1,26 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import AnimatedLogo from '@/components/ui/AnimatedLogo';
 import { TestBlobBackground } from '@/components/test/TestBlobBackground';
 import AnimatedOutlineStroke from '@/components/ui/AnimatedOutlineStroke';
 import MicV1 from '@/components/test/textscene/mic/V1';
 import MicV2 from '@/components/test/textscene/mic/V2';
 import MicV3 from '@/components/test/textscene/mic/V3';
+import MicV4 from '@/components/test/textscene/mic/V4';
+import MicV5 from '@/components/test/textscene/mic/V5';
+import MicV6 from '@/components/test/textscene/mic/V6';
+import MicV7 from '@/components/test/textscene/mic/V7';
+import MicV8 from '@/components/test/textscene/mic/V8';
+import MicV9 from '@/components/test/textscene/mic/V9';
 
 export default function TextIndexMirror() {
   const [micVariant, setMicVariant] = useState('v1');
+  const bottomAreaRef = useRef(null);
+  const thirdChipRef = useRef(null);
+  const micSideRef = useRef(null);
+  const [micSideTop, setMicSideTop] = useState(null);
   const message = useMemo(
     () => ({
       role: 'assistant',
@@ -81,6 +91,78 @@ export default function TextIndexMirror() {
     };
   }, []);
 
+  const isMicSideVariant = useMemo(() => ['v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'].includes(micVariant), [micVariant]);
+
+  const renderMicForVariant = useCallback(() => {
+    switch (micVariant) {
+      case 'v1':
+        return <MicV1 />;
+      case 'v2':
+        return <MicV2 />;
+      case 'v3':
+        return <MicV3 />;
+      case 'v4':
+        return <MicV4 />;
+      case 'v5':
+        return <MicV5 />;
+      case 'v6':
+        return <MicV6 />;
+      case 'v7':
+        return <MicV7 />;
+      case 'v8':
+        return <MicV8 />;
+      case 'v9':
+        return <MicV9 />;
+      default:
+        return <MicV1 />;
+    }
+  }, [micVariant]);
+
+  const recomputeMicSideTop = useCallback(() => {
+    if (!isMicSideVariant) return;
+    const bottomEl = bottomAreaRef.current;
+    const chipEl = thirdChipRef.current;
+    const micEl = micSideRef.current;
+    if (!bottomEl || !chipEl || !micEl) return;
+
+    const bottomRect = bottomEl.getBoundingClientRect();
+    const chipRect = chipEl.getBoundingClientRect();
+    const micRect = micEl.getBoundingClientRect();
+
+    // Align mic button center Y to the 3rd chip center Y, within the bottom area coordinate space.
+    const targetTop = chipRect.top - bottomRect.top + (chipRect.height - micRect.height) / 2;
+    setMicSideTop(targetTop);
+  }, [isMicSideVariant]);
+
+  useLayoutEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        recomputeMicSideTop();
+      });
+    };
+
+    // Recompute after mount + variant change
+    tick();
+
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(tick) : null;
+    if (ro) {
+      if (bottomAreaRef.current) ro.observe(bottomAreaRef.current);
+      if (thirdChipRef.current) ro.observe(thirdChipRef.current);
+      if (micSideRef.current) ro.observe(micSideRef.current);
+      ro.observe(document.documentElement);
+    }
+    window.addEventListener('resize', tick, { passive: true });
+    window.addEventListener('orientationchange', tick, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', tick);
+      window.removeEventListener('orientationchange', tick);
+      if (ro) ro.disconnect();
+    };
+  }, [recomputeMicSideTop, micVariant]);
+
   return (
     <div className="min-h-screen flex flex-col safe-area-inset overscroll-contain relative v10-main-page">
       {/* Test-only blob: copied renderer with stable framing */}
@@ -94,33 +176,40 @@ export default function TextIndexMirror() {
       <AnimatedLogo />
 
       {/* mic variant toggle (test only) */}
-      <div className="fixed z-40" style={{ top: 10, right: 10 }}>
+      <div className="fixed z-40" style={{ top: 10, left: 10, right: 10 }}>
         <div
           style={{
             display: 'inline-flex',
-            gap: 6,
-            padding: 6,
+            flexWrap: 'nowrap',
+            justifyContent: 'flex-start',
+            gap: 4,
+            padding: 4,
             borderRadius: 999,
             background: 'rgba(255,255,255,0.5)',
             border: '1px solid rgba(255,255,255,0.6)',
             backdropFilter: 'blur(10px)',
             WebkitBackdropFilter: 'blur(10px)',
+            width: '100%',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
           }}
         >
-          {['v1', 'v2', 'v3'].map((v) => (
+          {['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7', 'v8', 'v9'].map((v) => (
             <button
               key={v}
               type="button"
               onClick={() => setMicVariant(v)}
               className="touch-manipulation"
               style={{
-                padding: '4px 8px',
+                padding: '3px 6px',
                 borderRadius: 999,
                 fontFamily: 'Pretendard Variable',
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 700,
                 color: micVariant === v ? '#000' : '#6b7280',
                 background: micVariant === v ? 'rgba(255,255,255,0.85)' : 'transparent',
+                lineHeight: 1.1,
               }}
             >
               {v.toUpperCase()}
@@ -190,13 +279,14 @@ export default function TextIndexMirror() {
 
       {/* bottom area copied from MainPageV1 layout */}
       <div className="fixed bottom-0 left-0 right-0 z-30 p-4 safe-bottom">
-        <div className="w-full">
+        <div className="w-full" ref={bottomAreaRef} style={{ position: 'relative' }}>
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
               {chips.map((text, idx) => (
                 <button
                   key={idx}
                   type="button"
+                  ref={idx === 2 ? thirdChipRef : undefined}
                   className="touch-manipulation active:scale-95 rounded-3xl outline outline-1 outline-offset-[-1px] outline-white"
                   style={{
                     display: 'inline-flex',
@@ -227,39 +317,59 @@ export default function TextIndexMirror() {
             </div>
           </div>
 
-          <div
-            className="flex items-center"
-            style={{
-              borderRadius: '22px',
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.18) 100%)',
-              border: '1px solid rgba(255,255,255,0.65)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.78), 0 16px 34px rgba(60,34,88,0.16)',
-              backdropFilter: 'blur(28px) saturate(1.6)',
-              WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
-              overflow: 'hidden',
-            }}
-          >
-            <input
-              type="text"
-              value=""
-              onChange={() => {}}
-              placeholder="Sori에게 말해주세요!"
+          {/* v3~v9: right-side mic aligned to 3rd chip's Y */}
+          {isMicSideVariant ? (
+            <div
+              ref={micSideRef}
+              className="mic-side"
               style={{
-                color: '#878181',
-                fontFamily: 'Pretendard Variable',
-                fontSize: '14px',
-                fontWeight: 400,
-                lineHeight: '150%',
-                caretColor: '#FFF',
+                position: 'absolute',
+                right: 4,
+                top: micSideTop ?? 0,
+                zIndex: 60,
+                pointerEvents: 'auto',
               }}
-              className="flex-1 px-4 py-3 bg-transparent focus:outline-none placeholder-[#878181]"
-              autoComplete="off"
-              autoCorrect="off"
-              autoCapitalize="off"
-              spellCheck="false"
-              readOnly
-            />
-            {micVariant === 'v1' ? <MicV1 /> : micVariant === 'v2' ? <MicV2 /> : <MicV3 />}
+              aria-hidden
+            >
+              {renderMicForVariant()}
+            </div>
+          ) : null}
+
+          <div className={micVariant === 'v4' ? 'input-wrap input-wrap--v4' : 'input-wrap'}>
+            <div
+              className="flex items-center input-bar"
+              style={{
+                borderRadius: micVariant === 'v9' ? '999px' : '22px',
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.58) 0%, rgba(255,255,255,0.18) 100%)',
+                border: '1px solid rgba(255,255,255,0.65)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.78), 0 16px 34px rgba(60,34,88,0.16)',
+                backdropFilter: 'blur(28px) saturate(1.6)',
+                WebkitBackdropFilter: 'blur(28px) saturate(1.6)',
+                overflow: 'hidden',
+              }}
+            >
+              <input
+                type="text"
+                value=""
+                onChange={() => {}}
+                placeholder="Sori에게 말해주세요!"
+                style={{
+                  color: '#878181',
+                  fontFamily: 'Pretendard Variable',
+                  fontSize: '14px',
+                  fontWeight: 400,
+                  lineHeight: '150%',
+                  caretColor: '#FFF',
+                }}
+                className="flex-1 px-4 py-3 bg-transparent focus:outline-none placeholder-[#878181]"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                readOnly
+              />
+              {isMicSideVariant ? null : renderMicForVariant()}
+            </div>
           </div>
         </div>
       </div>
@@ -353,7 +463,11 @@ export default function TextIndexMirror() {
 
         /* background is handled by TestBlobBackground */
 
-        /* Mic variants are now separate components (V1~V3) */
+        .input-wrap {
+          position: relative;
+        }
+
+        /* Mic variants are now separate components (V1~V9) */
       `}</style>
     </div>
   );
