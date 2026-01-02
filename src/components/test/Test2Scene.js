@@ -18,12 +18,9 @@ export default function Test2Scene() {
   const [visibleChipCount, setVisibleChipCount] = useState(3);
   const [chipsBehind, setChipsBehind] = useState(false);
   const [chipsBottomPx, setChipsBottomPx] = useState(0);
-  const [chipAIdx, setChipAIdx] = useState(0);
-  const [chipBIdx, setChipBIdx] = useState(1);
-  const chipAIdxRef = useRef(0);
-  const chipBIdxRef = useRef(1);
-  const nextChipIdxRef = useRef(2);
-  const [swapNonce, setSwapNonce] = useState(0);
+  // Keep ALL horizontal edges aligned (modal / chips / input) without using `vw`.
+  // On Windows, `100vw` includes scrollbar width, causing subtle horizontal misalignment.
+  const frameMaxWidthPx = 360;
 
   const message = useMemo(
     () => ({
@@ -44,42 +41,7 @@ export default function Test2Scene() {
     []
   );
 
-  useEffect(() => {
-    chipAIdxRef.current = chipAIdx;
-  }, [chipAIdx]);
-  useEffect(() => {
-    chipBIdxRef.current = chipBIdx;
-  }, [chipBIdx]);
-
-  // When we are in the "2 chips" state, rotate the texts every 2s and move the blur slot down.
-  useEffect(() => {
-    if (!(visibleChipCount === 2)) return;
-
-    // Initialize from current indices (safe for hot reload).
-    if (nextChipIdxRef.current == null) nextChipIdxRef.current = 2;
-
-    const t = window.setInterval(() => {
-      // Slot rotation only: content shifts down (top -> bottom), new item enters bottom.
-      const newTop = chipBIdxRef.current;
-      const next = nextChipIdxRef.current % chips.length;
-      nextChipIdxRef.current = (nextChipIdxRef.current + 1) % chips.length;
-
-      setChipAIdx(newTop);
-      setChipBIdx(next);
-      setSwapNonce((n) => n + 1);
-    }, 3000);
-
-    return () => window.clearInterval(t);
-  }, [visibleChipCount, chips.length]);
-
-  // Reset to default ordering when we go back to 3 chips.
-  useEffect(() => {
-    if (visibleChipCount !== 3) return;
-    setChipAIdx(0);
-    setChipBIdx(1);
-    nextChipIdxRef.current = 2;
-    setSwapNonce(0);
-  }, [visibleChipCount]);
+  // NOTE: Test2에서는 추천안 텍스트가 바뀌는 애니메이션(스왑/타이머)을 비활성화합니다.
 
   const recomputeOverlap = useCallback(() => {
     const modalEl = modalRef.current;
@@ -218,16 +180,19 @@ export default function Test2Scene() {
       <AnimatedLogo />
 
       <main className="relative flex-1 flex flex-col min-h-0 pb-32 pt-20" style={{ background: 'transparent' }}>
-        <div className="flex-1 overflow-hidden">
-          <div className="h-full overflow-y-auto px-6 pb-4 space-y-4 overscroll-contain">
+        {/* Prevent horizontal clipping when content grows: allow overflowX to stay visible */}
+        <div className="flex-1 overflow-y-hidden" style={{ overflowX: 'visible' }}>
+          <div className="h-full overflow-y-auto px-6 pb-4 space-y-4 overscroll-contain" style={{ overflowX: 'visible' }}>
             <div className="relative">
               <div className="space-y-4" style={{ opacity: 1, transition: 'opacity 0.5s ease-in-out' }}>
-                <div className="flex justify-center mb-4">
+                {/* Centering rule: rely on `margin: 0 auto` on the modal only (avoid flex edge-cases on long content). */}
+                <div className="mb-4">
                   <div
                     className="assistant-glass-wrapper"
                     ref={modalRef}
                     style={{
-                      width: 'min(360px, 92vw)',
+                      width: '100%',
+                      maxWidth: `${frameMaxWidthPx}px`,
                       margin: '0 auto 32px auto',
                       pointerEvents: 'none',
                       position: 'relative',
@@ -244,9 +209,10 @@ export default function Test2Scene() {
                           {/* Rectangle 91 image INSIDE modal */}
                           <div
                             style={{
-                              width: '301px',
-                              height: '260px',
-                              borderRadius: '25px',
+                              width: '100%',
+                              maxWidth: '301px',
+                              aspectRatio: '301 / 260',
+                              borderRadius: 'clamp(18px, 5vw, 25px)',
                               overflow: 'hidden',
                               border: '1px solid rgba(255, 255, 255, 0.65)',
                               boxShadow: '0 18px 36px rgba(22, 42, 58, 0.12)',
@@ -278,7 +244,7 @@ export default function Test2Scene() {
 
       {/* chips layer: can go behind modal when still overlapping after reducing to 2 */}
       <div
-        className="fixed left-0 right-0 px-4"
+        className="fixed left-0 right-0 px-6"
         style={{
           bottom: `${chipsBottomPx}px`,
           zIndex: chipsBehind ? 8 : 32,
@@ -288,9 +254,17 @@ export default function Test2Scene() {
         <div
           ref={chipsWrapRef}
           className={chipsBehind ? 'chips-wrap chips-wrap--behind' : 'chips-wrap'}
-          style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}
+          style={{
+            width: '100%',
+            maxWidth: `${frameMaxWidthPx}px`,
+            margin: '0 auto',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: '8px',
+          }}
         >
-          {(visibleChipCount === 2 ? [chips[chipAIdx], chips[chipBIdx]] : chips.slice(0, 3)).map((text, idx) => (
+          {(visibleChipCount === 2 ? chips.slice(0, 2) : chips.slice(0, 3)).map((text, idx) => (
             <button
               key={idx}
               type="button"
@@ -300,18 +274,17 @@ export default function Test2Scene() {
               style={{
                 display: 'inline-flex',
                 padding: '8px 16px',
-                justifyContent: 'center',
+                justifyContent: 'flex-start',
                 alignItems: 'center',
                 flex: '0 0 auto',
+                maxWidth: '100%',
                 cursor: 'default',
                 background: 'linear-gradient(180deg,rgb(251, 255, 254) 0%, #F4E9F0 63.94%, #FFF 100%)',
               }}
             >
               <span
-                key={`${idx}-${text}-${swapNonce}`}
                 className="chip-label"
                 style={{
-                  '--dy': idx === 0 ? '-6px' : '-10px',
                   fontFamily: 'Pretendard Variable',
                   fontSize: '14px',
                   fontStyle: 'normal',
@@ -319,7 +292,10 @@ export default function Test2Scene() {
                   lineHeight: '190%',
                   letterSpacing: '-0.48px',
                   color: '#757575',
-                  whiteSpace: 'nowrap',
+                  whiteSpace: 'normal',
+                  textAlign: 'left',
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
                 }}
               >
                 {text}
@@ -330,8 +306,8 @@ export default function Test2Scene() {
       </div>
 
       {/* input layer: always on top */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 p-4 safe-bottom">
-        <div className="w-full">
+      <div className="fixed bottom-0 left-0 right-0 z-30 px-6 py-4 safe-bottom">
+        <div style={{ width: '100%', maxWidth: `${frameMaxWidthPx}px`, margin: '0 auto' }}>
           <div
             ref={inputBarRef}
             className="flex items-center"
@@ -462,21 +438,6 @@ export default function Test2Scene() {
         .chip-label {
           display: inline-block;
           will-change: transform, opacity;
-          animation: chipSwapIn 520ms cubic-bezier(0.16, 1.0, 0.3, 1) both;
-        }
-        @keyframes chipSwapIn {
-          0% {
-            transform: translateY(var(--dy, -8px)) scale(0.985);
-            opacity: 0.0;
-          }
-          60% {
-            transform: translateY(1px) scale(1.035);
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(0px) scale(1);
-            opacity: 1;
-          }
         }
         .chip-btn--fade {
           /* Only the top chip softens: lighter opacity + a touch of blur (no darkening) */

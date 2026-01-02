@@ -47,6 +47,9 @@ data/vectors.json.tmp
 tmp/
 /tmp/
 
+# local reference repos (do not commit)
+/_ref_coexblobtest/
+
 # large media (avoid exceeding GitHub size limits; adjust if needed)
 public/**/*.mp4
 public/**/*.mov
